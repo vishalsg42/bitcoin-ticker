@@ -1,6 +1,8 @@
 import 'dart:io' show Platform;
 
 import 'package:bitcoin_ticker/coin_dart.dart';
+import 'package:bitcoin_ticker/services/http_handler.dart';
+import 'package:bitcoin_ticker/utilities/constants.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_emoji/flutter_emoji.dart';
@@ -13,6 +15,51 @@ class PriceScreen extends StatefulWidget {
 class _PriceScreenState extends State<PriceScreen> {
   var emojiParser = EmojiParser();
   String selectedCurrency;
+  bool showLoader = true;
+
+  List<Widget> currencyList = [];
+
+  @override
+  void initState() {
+    super.initState();
+    selectedCurrency = currenciesList[0];
+    getCoinList();
+  }
+
+  Future<void> getCoinList() async {
+    HttpHandler httpHandler = HttpHandler(baseUrl: 'https://rest.coinapi.io/');
+    print('selectedCurrency $selectedCurrency');
+    List<Widget> coinWidget = [];
+    for (int index = 0; index < cryptoList.length; index++) {
+      var coinData = await httpHandler
+          .get('v1/exchangerate/${cryptoList[index]}/$selectedCurrency');
+      var rate = coinData['rate'];
+      coinWidget.add(Padding(
+        padding: const EdgeInsets.fromLTRB(18.0, 18.0, 18.0, 0),
+        child: Card(
+          elevation: 5.0,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
+          child: Padding(
+            padding: EdgeInsets.symmetric(vertical: 10, horizontal: 28.0),
+            child: Text(
+              "1 ${cryptoList[index]} = ${rate.round().toString()} $selectedCurrency",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+              ),
+            ),
+          ),
+          color: Colors.lightBlueAccent,
+        ),
+      ));
+    }
+    setState(() {
+      currencyList = coinWidget;
+      showLoader = false;
+    });
+  }
 
   DropdownButton getAndroidPicker() {
     List<DropdownMenuItem<String>> currencyDropdown = [];
@@ -34,25 +81,11 @@ class _PriceScreenState extends State<PriceScreen> {
       onChanged: (String value) {
         setState(() {
           selectedCurrency = value;
+          getCoinList();
         });
       },
     );
   }
-
-//  List<DropdownMenuItem> getDropdownItems() {
-////    currenciesList
-//    List<DropdownMenuItem<String>> currencyDropdown = [];
-//    for (int index = 0; index < currenciesList.length; index++) {
-//      String currency = currenciesList[index];
-//      currencyDropdown.add(
-//        DropdownMenuItem(
-//          child: Text(currency),
-//          value: currency,
-//        ),
-//      );
-//    }
-//    return currencyDropdown;
-//  }
 
   CupertinoPicker getIOSPicker() {
     List<Text> currencyDropdown = [];
@@ -84,39 +117,26 @@ class _PriceScreenState extends State<PriceScreen> {
               Text('${emojiParser.get('money_mouth_face').code} Coin Ticker'),
           centerTitle: true,
         ),
-        body: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(18.0, 18.0, 18.0, 0),
-              child: Card(
-                elevation: 5.0,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10.0)),
-                child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 10, horizontal: 28.0),
-                  child: Text(
-                    '1 BTC =? USD',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                    ),
+        body: showLoader
+            ? spinkit
+            : Column(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: currencyList,
                   ),
-                ),
-                color: Colors.lightBlueAccent,
+                  Container(
+                    height: 150.0,
+                    alignment: Alignment.center,
+                    padding: EdgeInsets.only(bottom: 30.0),
+                    color: Colors.lightBlue,
+                    child: Platform.isIOS ? getIOSPicker() : getAndroidPicker(),
+                  )
+                ],
               ),
-            ),
-            Container(
-              height: 150.0,
-              alignment: Alignment.center,
-              padding: EdgeInsets.only(bottom: 30.0),
-              color: Colors.lightBlue,
-              child: Platform.isIOS ? getIOSPicker() : getAndroidPicker(),
-            )
-          ],
-        ),
       ),
     );
   }
